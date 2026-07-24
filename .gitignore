@@ -1,0 +1,20 @@
+
+# Environment variables (contains secrets)
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+documind-env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Vector DB / uploaded data
+chroma_db/
+data/uploads/
+
+# OS
+.DS_Store

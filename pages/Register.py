@@ -1,0 +1,62 @@
+import streamlit as st
+
+from database.database import SessionLocal
+from database.crud import create_user
+
+
+st.set_page_config(
+    page_title="Register",
+    page_icon="📝"
+)
+
+st.title("📝 Register")
+
+st.write("Create a new DocuMind AI account")
+
+name = st.text_input("Full Name")
+
+email = st.text_input("Email")
+
+password = st.text_input(
+    "Password",
+    type="password"
+)
+
+confirm_password = st.text_input(
+    "Confirm Password",
+    type="password"
+)
+
+
+if st.button("Register"):
+
+    if not name or not email or not password or not confirm_password:
+
+        st.error("Please fill all fields.")
+
+    elif password != confirm_password:
+
+        st.error("Passwords do not match.")
+
+    else:
+
+        db = SessionLocal()
+
+        user = create_user(
+            db=db,
+            name=name,
+            email=email,
+            password=password
+        )
+
+        db.close()
+
+        if user:
+
+            st.success("Registration Successful!")
+
+            st.info("Now go to Login Page.")
+
+        else:
+
+            st.error("Email already exists.")
