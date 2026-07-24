@@ -131,11 +131,20 @@ if uploaded_files:
 
         # Only wipe the user's collection on the FIRST file of this
         # upload batch — subsequent files get added, not overwritten.
-        create_vector_store(
+        vector_store, added_count = create_vector_store(
             chunks,
             user_id=st.session_state.user_id,
             reset=(file_index == 0)
         )
+
+        if added_count == 0:
+            st.warning(
+                f"⚠️ No extractable text found in **{uploaded_file.name}**. "
+                "It looks like a scanned/image-based PDF (no text layer), "
+                "so it was skipped. Try a text-based PDF, or an OCR tool first."
+            )
+            st.divider()
+            continue
 
         st.success("✅ Embeddings generated successfully!")
         st.success("✅ Stored in ChromaDB")

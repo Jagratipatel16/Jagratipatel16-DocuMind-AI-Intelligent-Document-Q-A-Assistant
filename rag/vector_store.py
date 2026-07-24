@@ -20,6 +20,10 @@ def create_vector_store(chunks, user_id, reset=True):
                    (use for the FIRST file in a fresh upload batch)
     reset=False -> adds to the existing collection
                    (use for additional files in the same batch/session)
+
+    If `chunks` is empty (e.g. a scanned/image-only PDF with no
+    extractable text), we skip embedding instead of crashing, and
+    return (vector_store, 0) so the caller can warn the user.
     """
 
     collection_name = get_collection_name(user_id)
@@ -37,12 +41,21 @@ def create_vector_store(chunks, user_id, reset=True):
         except Exception:
             pass
 
-        vector_store = Chroma.from_documents(
-            documents=chunks,
-            embedding=embeddings,
-            persist_directory=DB_DIRECTORY,
-            collection_name=collection_name
-        )
+        if chunks:
+            vector_store = Chroma.from_documents(
+                documents=chunks,
+                embedding=embeddings,
+                persist_directory=DB_DIRECTORY,
+                collection_name=collection_name
+            )
+        else:
+            # Nothing to embed — just (re)create an empty collection
+            # so later queries/adds don't error out.
+            vector_store = Chroma(
+                persist_directory=DB_DIRECTORY,
+                embedding_function=embeddings,
+                collection_name=collection_name
+            )
 
     else:
         vector_store = Chroma(
@@ -51,8 +64,9 @@ def create_vector_store(chunks, user_id, reset=True):
             collection_name=collection_name
         )
 
-        vector_store.add_documents(chunks)
+        if chunks:
+            vector_store.add_documents(chunks)
 
     print("Total Documents:", vector_store._collection.count())
 
-    return vector_store
+    return vector_store, len(chunks)
