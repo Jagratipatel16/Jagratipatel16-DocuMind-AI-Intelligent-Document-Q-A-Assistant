@@ -1,11 +1,16 @@
-from langchain_ollama import ChatOllama
+import os
+from dotenv import load_dotenv
 
-llm = ChatOllama(
-    model="llama3.2",
-    temperature=0
-)
+load_dotenv()
 
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
+
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    temperature=0,
+    groq_api_key=os.getenv("GROQ_API_KEY")
+)
 
 prompt = ChatPromptTemplate.from_template(
 """

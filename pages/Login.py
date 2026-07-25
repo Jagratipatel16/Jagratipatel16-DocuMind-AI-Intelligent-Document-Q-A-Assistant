@@ -2,16 +2,18 @@ import streamlit as st
 
 from database.database import SessionLocal
 from database.crud import login_user
-
+from session_utils import apply_theme, show_hero
 
 st.set_page_config(
-    page_title="Login",
+    page_title="Login - DocuMind AI",
     page_icon="🔐"
 )
 
-st.title("🔐 Login")
+apply_theme()
+show_hero()
 
-st.write("Welcome back to DocuMind AI")
+st.header("🔐 Login")
+st.write("Already have an account? Login below.")
 
 email = st.text_input("Email")
 
@@ -21,7 +23,7 @@ password = st.text_input(
 )
 
 
-if st.button("Login"):
+if st.button("Login", use_container_width=True, type="primary"):
 
     db = SessionLocal()
 
@@ -46,3 +48,8 @@ if st.button("Login"):
     else:
 
         st.error("Invalid Email or Password")
+
+st.divider()
+st.caption("Don't have an account?")
+if st.button("📝 Create a new account", use_container_width=True, type="secondary"):
+    st.switch_page("pages/Register.py")

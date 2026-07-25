@@ -9,7 +9,7 @@ from rag.llm import generate_answer
 from database.chat_service import save_chat
 from database.history_service import get_user_history
 from database.conversation_service import create_conversation
-from session_utils import require_login
+from session_utils import require_login, show_hero
 
 
 # -----------------------------------
@@ -34,8 +34,7 @@ require_login()
 # Header
 # -----------------------------------
 
-st.title("📄 DocuMind AI")
-st.subheader("Intelligent Document Q&A System")
+show_hero("Intelligent Document Q&A System")
 
 
 # -----------------------------------
@@ -83,16 +82,6 @@ for chat in history:
     ):
         st.session_state.selected_question = chat.question
         st.session_state.selected_answer = chat.answer
-
-
-# Logout
-
-st.sidebar.divider()
-
-if st.sidebar.button("🚪 Logout"):
-
-    st.session_state.clear()
-    st.switch_page("pages/Login.py")
 
 
 # -----------------------------------
@@ -144,82 +133,56 @@ if uploaded_files:
             st.divider()
             continue
 
-        st.success("✅ Embeddings generated successfully!")
-        st.success("✅ Stored in ChromaDB")
-        st.success(f"✅ {uploaded_file.name} uploaded successfully!")
+        st.success(f"✅ {uploaded_file.name} uploaded and processed successfully!")
 
-        st.divider()
+        with st.expander("🔧 Advanced: File Processing Details"):
 
-        # ----------------------------
-        # File Information
-        # ----------------------------
+            # ----------------------------
+            # File Information
+            # ----------------------------
 
-        st.header("📄 File Information")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric(
-                "File Name",
-                uploaded_file.name
-            )
-
-        with col2:
-            st.metric(
-                "Total Pages",
-                len(documents)
-            )
-
-        st.divider()
-
-        # ----------------------------
-        # Metadata
-        # ----------------------------
-
-        st.header("📑 PDF Metadata")
-
-        with st.expander("View Metadata"):
-            st.json(documents[0].metadata)
-
-        st.divider()
-
-        # ----------------------------
-        # Chunks
-        # ----------------------------
-
-        st.header("✂️ Chunk Information")
-
-        st.metric(
-            "Total Chunks",
-            len(chunks)
-        )
-
-        st.divider()
-
-        st.header("📚 Chunk Preview")
-
-        for i, chunk in enumerate(chunks[:5]):
-
-            st.subheader(f"Chunk {i+1}")
+            st.subheader("📄 File Information")
 
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write(
-                    f"**Page Number:** {chunk.metadata['page'] + 1}"
+                st.metric(
+                    "File Name",
+                    uploaded_file.name
                 )
 
             with col2:
-                st.write(
-                    f"**Characters:** {len(chunk.page_content)}"
+                st.metric(
+                    "Total Pages",
+                    len(documents)
                 )
 
-            st.write(chunk.page_content)
+            # ----------------------------
+            # Metadata
+            # ----------------------------
 
-            with st.expander("View Chunk Metadata"):
-                st.json(chunk.metadata)
+            st.subheader("📑 PDF Metadata")
+            st.json(documents[0].metadata)
 
-            st.divider()
+            # ----------------------------
+            # Chunks
+            # ----------------------------
+
+            st.subheader("✂️ Chunk Information")
+
+            st.metric(
+                "Total Chunks",
+                len(chunks)
+            )
+
+            st.caption(f"Showing first 5 of {len(chunks)} chunks")
+
+            for i, chunk in enumerate(chunks[:5]):
+
+                st.markdown(f"**Chunk {i+1}** — Page {chunk.metadata['page'] + 1}, {len(chunk.page_content)} characters")
+                st.text(chunk.page_content[:300] + ("..." if len(chunk.page_content) > 300 else ""))
+
+        st.divider()
 
 
 # -----------------------------------
@@ -292,10 +255,6 @@ if uploaded_files:
             answer
         )
 
-        st.success(
-            f"Found {len(results)} relevant chunks"
-        )
-
         # ----------------------------
         # AI Answer
         # ----------------------------
@@ -304,29 +263,37 @@ if uploaded_files:
 
         st.write(answer)
 
+        # Show the page(s) the answer most likely came from
+        if results:
+            top_doc, top_score = min(results, key=lambda r: r[1])
+            top_page = top_doc.metadata["page"] + 1
+
+            other_pages = sorted(set(
+                doc.metadata["page"] + 1
+                for doc, score in results
+                if (doc.metadata["page"] + 1) != top_page
+            ))
+
+            if other_pages:
+                st.caption(
+                    f"📄 Source: Page {top_page}  •  Related: Page(s) {', '.join(map(str, other_pages))}"
+                )
+            else:
+                st.caption(f"📄 Source: Page {top_page}")
+
         st.divider()
 
         # ----------------------------
-        # Sources
+        # Sources (optional, collapsed)
         # ----------------------------
 
-        st.header("📚 Sources")
+        with st.expander(f"📚 View {len(results)} source(s) from your document"):
 
-        for i, (doc, score) in enumerate(results):
+            for i, (doc, score) in enumerate(results):
 
-            st.subheader(f"Source {i+1}")
+                st.markdown(f"**Source {i+1} — Page {doc.metadata['page'] + 1}**")
 
-            st.write(
-                f"**Page:** {doc.metadata['page'] + 1}"
-            )
+                excerpt = doc.page_content[:250]
+                st.caption(excerpt + ("..." if len(doc.page_content) > 250 else ""))
 
-            st.caption(
-                f"Distance Score: {score:.4f}"
-            )
-
-            st.write(doc.page_content)
-
-            with st.expander("View Metadata"):
-                st.json(doc.metadata)
-
-            st.divider()
+                st.divider()

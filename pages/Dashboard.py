@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
+from datetime import date, timedelta
 
 from database.conversation_service import get_conversations
 from database.history_service import get_user_history
-from session_utils import require_login
+from session_utils import require_login, show_hero
 
 
 # -----------------------------------
@@ -23,7 +25,8 @@ st.set_page_config(
 
 require_login()
 
-st.title("📊 Dashboard")
+show_hero("Your activity at a glance")
+st.subheader("📊 Dashboard")
 st.caption(f"Welcome back, {st.session_state.username} 👋")
 
 
@@ -58,21 +61,59 @@ st.divider()
 # Activity Over Time
 # -----------------------------------
 
-st.header("📈 Activity")
+st.header("📈 Activity — Last 7 Days")
 
 if history:
-    df = pd.DataFrame(
-        [{"date": h.created_at.date()} for h in history]
+
+    today = date.today()
+    last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+
+    counts_by_date = {}
+    for h in history:
+        d = h.created_at.date()
+        counts_by_date[d] = counts_by_date.get(d, 0) + 1
+
+    labels = [d.strftime("%a") for d in last_7_days]
+    values = [counts_by_date.get(d, 0) for d in last_7_days]
+    colors = ["#5EEAD4" if d == today else "#0EA5A5" for d in last_7_days]
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=labels,
+                y=values,
+                marker=dict(color=colors),
+                text=[str(v) if v else "" for v in values],
+                textposition="outside",
+                hovertemplate="%{x}: %{y} question(s)<extra></extra>",
+            )
+        ]
     )
 
-    daily_counts = (
-        df.groupby("date")
-        .size()
-        .reset_index(name="questions")
-        .set_index("date")
+    try:
+        fig.update_traces(marker_cornerradius=10)
+    except Exception:
+        pass
+
+    fig.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        height=320,
+        margin=dict(l=10, r=10, t=20, b=10),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#E2E8F0",
+            zeroline=False,
+            title=None,
+            dtick=1
+        ),
+        xaxis=dict(showgrid=False, title=None),
+        bargap=0.4,
+        font=dict(color="#1E293B", size=13)
     )
 
-    st.bar_chart(daily_counts)
+    st.plotly_chart(fig, use_container_width=True)
+
 else:
     st.caption("No activity yet — start a chat to see your stats here.")
 
@@ -101,6 +142,6 @@ else:
 
             st.caption(f"{len(conv_messages)} message(s) in this conversation")
 
-            if st.button("Open in Chat →", key=f"open_{conv.id}"):
+            if st.button("Open in Chat →", key=f"open_{conv.id}", type="primary"):
                 st.session_state.conversation_id = conv.id
                 st.switch_page("pages/Chat.py")

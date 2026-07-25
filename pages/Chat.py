@@ -9,7 +9,7 @@ from database.conversation_service import (
     delete_conversation,
 )
 from database.chat_service import save_chat, get_messages
-from session_utils import require_login
+from session_utils import require_login, show_hero
 
 
 # -----------------------------------
@@ -29,7 +29,8 @@ st.set_page_config(
 
 require_login()
 
-st.title("💬 Chat")
+show_hero("Chat with your documents")
+st.subheader("💬 Chat")
 
 
 # -----------------------------------
@@ -39,7 +40,7 @@ st.title("💬 Chat")
 st.sidebar.success(f"👤 {st.session_state.username}")
 st.sidebar.divider()
 
-if st.sidebar.button("➕ New Chat", use_container_width=True):
+if st.sidebar.button("➕ New Chat", use_container_width=True, type="primary"):
     st.session_state.pop("conversation_id", None)
     st.rerun()
 
@@ -122,6 +123,24 @@ if query:
             answer = generate_answer(query, docs)
 
             st.write(answer)
+
+            # Show the page(s) the answer most likely came from
+            if results:
+                top_doc, top_score = min(results, key=lambda r: r[1])
+                top_page = top_doc.metadata["page"] + 1
+
+                other_pages = sorted(set(
+                    doc.metadata["page"] + 1
+                    for doc, score in results
+                    if (doc.metadata["page"] + 1) != top_page
+                ))
+
+                if other_pages:
+                    st.caption(
+                        f"📄 Source: Page {top_page}  •  Related: Page(s) {', '.join(map(str, other_pages))}"
+                    )
+                else:
+                    st.caption(f"📄 Source: Page {top_page}")
 
     # Create a conversation on the first message of a new chat
     if not active_conversation_id:
