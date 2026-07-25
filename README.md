@@ -65,6 +65,17 @@ python database/create_tables.py
 streamlit run app.py
 ```
 
+## 🧪 Testing
+
+This project uses `pytest` for automated tests, covering authentication (`database/auth.py`), user CRUD operations, and the full conversation/chat-history flow.
+
+```bash
+pip install pytest
+pytest tests/
+```
+
+> Note: `test_crud.py` and `test_conversation_flow.py` require the MySQL database to be reachable and tables created first (`python database/create_tables.py`).
+
 ## 📁 Project Structure
 
 ```
@@ -89,6 +100,10 @@ documind-ai/
 │   ├── conversation_service.py
 │   ├── chat_service.py
 │   └── history_service.py
+├── tests/
+│   ├── test_auth.py           # Password hashing tests
+│   ├── test_crud.py           # User creation/lookup tests
+│   └── test_conversation_flow.py  # End-to-end chat history tests
 └── session_utils.py           # Shared auth guard + theming
 ```
 
