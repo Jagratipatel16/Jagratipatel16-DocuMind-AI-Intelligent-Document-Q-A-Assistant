@@ -33,3 +33,22 @@ def get_conversations(user_id):
     db.close()
 
     return conversations
+
+
+def delete_conversation(conversation_id):
+    """
+    Deletes a conversation and (via cascade in models.py)
+    all of its chat messages too.
+    """
+
+    db = SessionLocal()
+
+    conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id
+    ).first()
+
+    if conversation:
+        db.delete(conversation)
+        db.commit()
+
+    db.close()

@@ -9,16 +9,7 @@ from rag.llm import generate_answer
 from database.chat_service import save_chat
 from database.history_service import get_user_history
 from database.conversation_service import create_conversation
-
-
-# -----------------------------------
-# Login Check
-# -----------------------------------
-
-if "logged_in" not in st.session_state:
-
-    st.warning("🔐 Please Login First")
-    st.stop()
+from session_utils import require_login
 
 
 # -----------------------------------
@@ -30,6 +21,13 @@ st.set_page_config(
     page_icon="📄",
     layout="wide"
 )
+
+
+# -----------------------------------
+# Login Check
+# -----------------------------------
+
+require_login()
 
 
 # -----------------------------------
