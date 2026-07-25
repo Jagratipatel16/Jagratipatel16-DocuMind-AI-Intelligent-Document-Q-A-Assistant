@@ -13,7 +13,7 @@ DocuMind AI is a full-stack Retrieval-Augmented Generation (RAG) application tha
 - 📊 **Analytics Dashboard** — activity charts, conversation stats
 - 👤 **Per-user Data Isolation** — each user's documents and chat history are private, backed by separate ChromaDB collections
 - 🎨 **Custom themed UI** — consistent branding across every page
-- ⚡ **Hybrid architecture** — local embeddings (Ollama, no per-query cost) + fast cloud inference (Groq) for answers
+- ☁️ **Fully cloud-based AI** — embeddings (HuggingFace) and answer generation (Groq) both run via API, no local model server required, making it easy to deploy anywhere
 
 ## 🛠️ Tech Stack
 
@@ -21,7 +21,7 @@ DocuMind AI is a full-stack Retrieval-Augmented Generation (RAG) application tha
 |---|---|
 | Frontend / App Framework | [Streamlit](https://streamlit.io/) |
 | LLM (answer generation + summarization) | [Groq](https://groq.com/) — Llama 3.3 70B (cloud) |
-| Embeddings | [Ollama](https://ollama.com/) — `nomic-embed-text` (local) |
+| Embeddings | [HuggingFace Inference API](https://huggingface.co/) — `sentence-transformers/all-MiniLM-L6-v2` (cloud) |
 | RAG Framework | [LangChain](https://www.langchain.com/) |
 | Vector Database | [ChromaDB](https://www.trychroma.com/) — per-user isolated collections |
 | PDF Parsing | PyPDFLoader (`pypdf`) |
@@ -32,12 +32,9 @@ DocuMind AI is a full-stack Retrieval-Augmented Generation (RAG) application tha
 ## ✅ Prerequisites
 
 - Python 3.10+
-- MySQL Server running locally (or update `DB_HOST` for a remote instance)
-- [Ollama](https://ollama.com/) installed and running locally, with the embedding model pulled:
-  ```bash
-  ollama pull nomic-embed-text
-  ```
-- A free [Groq API key](https://console.groq.com/keys)
+- MySQL Server running locally (or update `DB_HOST` for a remote/hosted instance)
+- A free [Groq API key](https://console.groq.com/keys) — for answer generation
+- A free [HuggingFace access token](https://huggingface.co/settings/tokens) (Read permission) — for embeddings
 
 ## 🚀 Getting Started
 
@@ -66,19 +63,15 @@ DB_PORT=3306
 DB_NAME=documind_ai
 
 GROQ_API_KEY=your_groq_api_key
+HF_TOKEN=your_huggingface_token
 ```
 
-### 4. Make sure Ollama is running
-```bash
-ollama serve
-```
-
-### 5. Set up the database
+### 4. Set up the database
 ```bash
 python -m database.create_tables
 ```
 
-### 6. Run the app
+### 5. Run the app
 ```bash
 streamlit run app.py
 ```
@@ -112,7 +105,7 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 ├── rag/
 │   ├── loader.py               # PDF loading
 │   ├── splitter.py             # Text chunking
-│   ├── embeddings.py           # Ollama embedding model config
+│   ├── embeddings.py           # HuggingFace Inference API embedding config
 │   ├── vector_store.py         # ChromaDB storage (per-user isolated)
 │   ├── retriever.py            # Similarity search
 │   └── llm.py                   # Groq-based answer generation + summarization
