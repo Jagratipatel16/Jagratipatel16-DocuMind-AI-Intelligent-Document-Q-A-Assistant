@@ -4,7 +4,7 @@ from rag.loader import save_uploaded_file, load_pdf
 from rag.splitter import split_documents
 from rag.vector_store import create_vector_store
 from rag.retriever import retrieve_documents
-from rag.llm import generate_answer
+from rag.llm import generate_answer, generate_summary
 
 from database.chat_service import save_chat
 from database.history_service import get_user_history
@@ -51,9 +51,8 @@ st.sidebar.success(
 
 if st.sidebar.button("➕ New Chat"):
 
-    st.session_state.pop("selected_question", None)
-    st.session_state.pop("selected_answer", None)
     st.session_state.pop("conversation_id", None)
+    st.session_state.pop("home_messages", None)
 
     st.rerun()
 
@@ -80,8 +79,12 @@ for chat in history:
         title,
         key=chat.id
     ):
-        st.session_state.selected_question = chat.question
-        st.session_state.selected_answer = chat.answer
+        st.session_state.home_messages = [
+            {"role": "user", "content": chat.question},
+            {"role": "assistant", "content": chat.answer}
+        ]
+        st.session_state.conversation_id = chat.conversation_id
+        st.rerun()
 
 
 # -----------------------------------
@@ -135,107 +138,107 @@ if uploaded_files:
 
         st.success(f"✅ {uploaded_file.name} uploaded and processed successfully!")
 
-        with st.expander("🔧 Advanced: File Processing Details"):
+        # ----------------------------
+        # Summary (click to expand/collapse)
+        # ----------------------------
 
-            # ----------------------------
-            # File Information
-            # ----------------------------
+        summary_key = f"summary_{uploaded_file.name}"
 
-            st.subheader("📄 File Information")
+        with st.expander(f"📝 Summary of {uploaded_file.name}"):
 
-            col1, col2 = st.columns(2)
+            if summary_key not in st.session_state:
 
-            with col1:
-                st.metric(
-                    "File Name",
-                    uploaded_file.name
-                )
+                if st.button("Generate Summary", key=f"gen_summary_{file_index}"):
 
-            with col2:
-                st.metric(
-                    "Total Pages",
-                    len(documents)
-                )
+                    with st.spinner("Generating summary..."):
 
-            # ----------------------------
-            # Metadata
-            # ----------------------------
+                        full_text = "\n\n".join(doc.page_content for doc in documents)
 
-            st.subheader("📑 PDF Metadata")
-            st.json(documents[0].metadata)
+                        st.session_state[summary_key] = generate_summary(full_text)
 
-            # ----------------------------
-            # Chunks
-            # ----------------------------
+                    st.rerun()
 
-            st.subheader("✂️ Chunk Information")
-
-            st.metric(
-                "Total Chunks",
-                len(chunks)
-            )
-
-            st.caption(f"Showing first 5 of {len(chunks)} chunks")
-
-            for i, chunk in enumerate(chunks[:5]):
-
-                st.markdown(f"**Chunk {i+1}** — Page {chunk.metadata['page'] + 1}, {len(chunk.page_content)} characters")
-                st.text(chunk.page_content[:300] + ("..." if len(chunk.page_content) > 300 else ""))
+            if summary_key in st.session_state:
+                st.write(st.session_state[summary_key])
 
         st.divider()
 
 
 # -----------------------------------
-# Previous Chat
-# -----------------------------------
-
-if "selected_answer" in st.session_state:
-
-    st.header("💬 Previous Chat")
-
-    st.write("### Question")
-
-    st.info(
-        st.session_state.selected_question
-    )
-
-    st.write("### Answer")
-
-    st.success(
-        st.session_state.selected_answer
-    )
-
-    st.divider()
-
-
-# -----------------------------------
-# Ask Questions
+# Chat Interface
 # -----------------------------------
 
 if uploaded_files:
 
-    st.header("💬 Ask Questions")
+    if "home_messages" not in st.session_state:
+        st.session_state.home_messages = []
 
-    query = st.text_input(
-        "Ask something about the uploaded PDF"
-    )
+    if len(uploaded_files) == 1:
+        chat_title = f"💬 Chat with: {uploaded_files[0].name}"
+    else:
+        chat_title = "💬 Chat with your documents"
+
+    st.header(chat_title)
+
+    # Render the running conversation as chat bubbles
+    for msg in st.session_state.home_messages:
+
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+            if msg.get("source"):
+                st.caption(msg["source"])
+
+    query = st.chat_input("Ask anything about your document...")
 
     if query:
 
-        results = retrieve_documents(query, user_id=st.session_state.user_id)
+        with st.chat_message("user"):
+            st.write(query)
 
-        docs = []
+        st.session_state.home_messages.append({
+            "role": "user",
+            "content": query
+        })
 
-        for doc, score in results:
-            docs.append(doc)
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
 
-        answer = generate_answer(
-            query,
-            docs
-        )
+                results = retrieve_documents(query, user_id=st.session_state.user_id)
+
+                docs = [doc for doc, score in results]
+
+                answer = generate_answer(query, docs)
+
+                st.write(answer)
+
+                source_line = None
+
+                if results:
+                    top_doc, top_score = min(results, key=lambda r: r[1])
+                    top_page = top_doc.metadata["page"] + 1
+
+                    other_pages = sorted(set(
+                        doc.metadata["page"] + 1
+                        for doc, score in results
+                        if (doc.metadata["page"] + 1) != top_page
+                    ))
+
+                    if other_pages:
+                        source_line = f"📄 Source: Page {top_page}  •  Related: Page(s) {', '.join(map(str, other_pages))}"
+                    else:
+                        source_line = f"📄 Source: Page {top_page}"
+
+                    st.caption(source_line)
+
+        st.session_state.home_messages.append({
+            "role": "assistant",
+            "content": answer,
+            "source": source_line
+        })
 
         # -----------------------------------
-        # Get or Create Conversation
+        # Get or Create Conversation, then save
         # -----------------------------------
 
         if "conversation_id" not in st.session_state:
@@ -247,53 +250,8 @@ if uploaded_files:
                 title
             )
 
-        # Save Chat
-
         save_chat(
             st.session_state.conversation_id,
             query,
             answer
         )
-
-        # ----------------------------
-        # AI Answer
-        # ----------------------------
-
-        st.header("🤖 AI Answer")
-
-        st.write(answer)
-
-        # Show the page(s) the answer most likely came from
-        if results:
-            top_doc, top_score = min(results, key=lambda r: r[1])
-            top_page = top_doc.metadata["page"] + 1
-
-            other_pages = sorted(set(
-                doc.metadata["page"] + 1
-                for doc, score in results
-                if (doc.metadata["page"] + 1) != top_page
-            ))
-
-            if other_pages:
-                st.caption(
-                    f"📄 Source: Page {top_page}  •  Related: Page(s) {', '.join(map(str, other_pages))}"
-                )
-            else:
-                st.caption(f"📄 Source: Page {top_page}")
-
-        st.divider()
-
-        # ----------------------------
-        # Sources (optional, collapsed)
-        # ----------------------------
-
-        with st.expander(f"📚 View {len(results)} source(s) from your document"):
-
-            for i, (doc, score) in enumerate(results):
-
-                st.markdown(f"**Source {i+1} — Page {doc.metadata['page'] + 1}**")
-
-                excerpt = doc.page_content[:250]
-                st.caption(excerpt + ("..." if len(doc.page_content) > 250 else ""))
-
-                st.divider()
