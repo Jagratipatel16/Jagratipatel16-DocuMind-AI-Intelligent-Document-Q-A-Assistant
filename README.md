@@ -89,7 +89,7 @@ The app will open at `http://localhost:8501`.
 
 This app is deployed on **Streamlit Community Cloud**, with a **MySQL database hosted on Railway** (Streamlit Cloud's filesystem is ephemeral, so the database has to live externally).
 
-Configuration values (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `GROQ_API_KEY`, `HF_TOKEN`) are set via Streamlit Cloud's **Secrets** manager instead of a `.env` file. `env_config.py` provides a `get_env()` helper that checks a local `.env` first, then falls back to `st.secrets` — so the same codebase runs identically both locally and when deployed.
+Configuration values (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `GROQ_API_KEY`, `HF_TOKEN`) are set via Streamlit Cloud's **Secrets** manager instead of a `.env` file. Streamlit Cloud automatically exposes top-level Secrets as environment variables, so the app's existing `os.getenv()` calls work the same way both locally (reading from `.env`) and when deployed (reading from Secrets) — no extra code needed.
 
 To deploy your own copy:
 1. Push the repo to GitHub
@@ -116,7 +116,6 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 │   └── config.toml           # App theme (colors, fonts)
 ├── app.py                    # Home page — upload PDFs, chat, summarize
 ├── session_utils.py          # Shared auth guard + theming for every page
-|
 ├── pages/
 │   ├── Login.py
 │   ├── Register.py
@@ -150,7 +149,7 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 ## 🔒 Security Notes
 
 - Passwords are hashed with `bcrypt` before storage
-- Database and API credentials are loaded from environment variables locally, or Streamlit Secrets when deployed — never hardcoded
+- Database and API credentials are loaded from environment variables — a local `.env` file during development, or Streamlit Cloud's Secrets manager (auto-exposed as env vars) when deployed — never hardcoded
 - `.env` is git-ignored and never committed
 - Each user's uploaded documents live in an isolated ChromaDB collection — no cross-user data leakage
 
