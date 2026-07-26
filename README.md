@@ -2,6 +2,12 @@
 
 DocuMind AI is a full-stack Retrieval-Augmented Generation (RAG) application that lets users upload PDF documents and ask natural-language questions about their content, with answers grounded in the actual document text and page-level citations.
 
+## 🚀 Live Demo
+
+[Try DocuMind AI](https://jagratipatel16-jagratipatel16-documind-ai-intelligen-app-zmscmk.streamlit.app/)
+
+> Hosted on Streamlit Community Cloud with a MySQL database on Railway. Note: uploaded PDFs and vector data reset on app restart/redeploy — chat history and accounts persist since they live in the hosted database.
+
 ## ✨ Features
 
 - 🔐 **User Authentication** — register, login, logout with hashed passwords
@@ -20,23 +26,24 @@ DocuMind AI is a full-stack Retrieval-Augmented Generation (RAG) application tha
 | Layer | Technology |
 |---|---|
 | Frontend / App Framework | [Streamlit](https://streamlit.io/) |
+| Hosting | [Streamlit Community Cloud](https://streamlit.io/cloud) |
 | LLM (answer generation + summarization) | [Groq](https://groq.com/) — Llama 3.3 70B (cloud) |
 | Embeddings | [HuggingFace Inference API](https://huggingface.co/) — `sentence-transformers/all-MiniLM-L6-v2` (cloud) |
 | RAG Framework | [LangChain](https://www.langchain.com/) |
 | Vector Database | [ChromaDB](https://www.trychroma.com/) — per-user isolated collections |
 | PDF Parsing | PyPDFLoader (`pypdf`) |
-| Relational Database | MySQL + SQLAlchemy ORM |
+| Relational Database | MySQL ([Railway](https://railway.app/)) + SQLAlchemy ORM |
 | Charts | Plotly |
 | Testing | Pytest |
 
-## ✅ Prerequisites
+## ✅ Prerequisites (for local development)
 
 - Python 3.10+
-- MySQL Server running locally (or update `DB_HOST` for a remote/hosted instance)
+- MySQL Server running locally (or point `DB_HOST` at a remote/hosted instance)
 - A free [Groq API key](https://console.groq.com/keys) — for answer generation
 - A free [HuggingFace access token](https://huggingface.co/settings/tokens) (Read permission) — for embeddings
 
-## 🚀 Getting Started
+## 🚀 Getting Started (local)
 
 ### 1. Clone the repo
 ```bash
@@ -78,6 +85,19 @@ streamlit run app.py
 
 The app will open at `http://localhost:8501`.
 
+## ☁️ Deployment
+
+This app is deployed on **Streamlit Community Cloud**, with a **MySQL database hosted on Railway** (Streamlit Cloud's filesystem is ephemeral, so the database has to live externally).
+
+Configuration values (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `GROQ_API_KEY`, `HF_TOKEN`) are set via Streamlit Cloud's **Secrets** manager instead of a `.env` file. `env_config.py` provides a `get_env()` helper that checks a local `.env` first, then falls back to `st.secrets` — so the same codebase runs identically both locally and when deployed.
+
+To deploy your own copy:
+1. Push the repo to GitHub
+2. Provision a MySQL database (e.g. on [Railway](https://railway.app/)) and run `python -m database.create_tables` against it once
+3. Create a new app on [share.streamlit.io](https://share.streamlit.io), pointing at `app.py`
+4. Add all required keys under **Advanced settings → Secrets**
+5. Deploy
+
 ## 🧪 Testing
 
 This project uses `pytest` for automated tests, covering authentication (`database/auth.py`), user CRUD operations, and the full conversation/chat-history flow.
@@ -86,7 +106,7 @@ This project uses `pytest` for automated tests, covering authentication (`databa
 pytest tests/
 ```
 
-> Note: tests require the MySQL database to be reachable and tables created first (step 5 above).
+> Note: tests require the MySQL database to be reachable and tables created first (step 4 above).
 
 ## 📁 Project Structure
 
@@ -96,6 +116,7 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 │   └── config.toml           # App theme (colors, fonts)
 ├── app.py                    # Home page — upload PDFs, chat, summarize
 ├── session_utils.py          # Shared auth guard + theming for every page
+|
 ├── pages/
 │   ├── Login.py
 │   ├── Register.py
@@ -129,7 +150,7 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 ## 🔒 Security Notes
 
 - Passwords are hashed with `bcrypt` before storage
-- Database and API credentials are loaded from environment variables (`.env`), never hardcoded
+- Database and API credentials are loaded from environment variables locally, or Streamlit Secrets when deployed — never hardcoded
 - `.env` is git-ignored and never committed
 - Each user's uploaded documents live in an isolated ChromaDB collection — no cross-user data leakage
 
@@ -139,6 +160,7 @@ Jagratipatel16-DocuMind-AI-Intelligent-Document-Q-A-Assistant/
 - [ ] Export chat as PDF/text
 - [ ] Multi-language translation
 - [ ] Suggested follow-up questions
+- [ ] Persistent object storage for uploaded PDFs/vectors (survive redeploys)
 
 ## 👤 Author
 
